@@ -1,0 +1,14 @@
+{
+  "format": "otp-vault",
+  "version": 1,
+  "kdf": {
+    "name": "argon2id",
+    "time": 3,
+    "memory": 65536,
+    "threads": 4,
+    "salt": "lglj4ad69DI+UlqEwrmvSg=="
+  },
+  "cipher": "xchacha20poly1305",
+  "nonce": "wFd+78/13w3BtHcA2Xpvi2thkQWwaQ5i",
+  "data": "UaSW09W2gkDDnI+1r4l0lWSbfE8FRJS2d6XKxLBzs3JMyVyzC7N8JoKt1yQB8Deztec2CswwaxPd+FwMR6AwulxVCccykupq+9bMs5JKQaNRWHv1IUvPmVBbQSKE6t2Pd7/0e0sTZk11NyTsvG4Wzynk6qgNii93Gc1+5fjkRX7gp/qwkqE3blfBAQU0SKY/U70KRRM5TxfWB5t1nQuXZ1s/bfhPE9UVz/i0jP2DHYCJdo+KUas009JJzOhDPlAPONYAEaOmvzH0LdbHkxMxiwzsx6/bbGjsd6PHApVdieS+XM//bE5EmnDiELBOzOVwcitISWZwpoeRYV9Z/i/tox1ppKNKUcVzTgnltpC6vK0HG7gfFn9KHl6Qpn8vGjuKPu19ZpFhq6QI0NTmFzqbrzbTt5twIqm4f4MiP6V8pyy9XU6emNdqZnRyMYGU1MU01q1nK6hAY+3nKR0zqG2lS9lASMYehmKNtdcXgtDAkGBButmoBpni9OD2kNSbrh8bXOVFj5GSk/6pz8ImJ5hTwTL43vO/Zj0xF77ApMOb3oUlXs+kbJf4palmPOE4uVfGTDttvoi2fKKgbA4NEU5ZtzmXEiWLsj1Rfi+uea42qVKCwxSpSUV0XRRrnrxC5SJjEoL0V+XfpjxyqLEMZwsIhObE/I0KW/jSh0JF3HqSsDsEcMN4gYAa0u0ryjF0IHAuYaNWH2ecQMRXAZy6Uo7s95YpWXtLYFnanhWNDzAydz9QAsjdaByyNStD/haDyfzwive9SFQIYUwo5+mHbi2yfhsZUzcVqAyBjU3WSpOca3Qv7T0ZAH4cNqv43N+bpSjoX9BSV4T0OYUbE7emb9SZx30V1+CcLxNDSj0J43MhxLzF2ptU"
+}
