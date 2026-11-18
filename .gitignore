@@ -6,3 +6,6 @@
 
 # Private Notizen
 /_notes/
+
+# Lokale Kopie der Release-Dateien zum Herunterladen
+/release/
