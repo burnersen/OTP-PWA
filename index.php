@@ -7,7 +7,7 @@
  * Im Browser zeigt die Seite nur, wie man die App installiert. Auf dem Server liegen nur das Programm und
  * in data/ der Stand der automatischen Updates. Es gibt keine Datenbank, keine Konten und kein Passwort.
  *
- *   app/lib/     Hilfen und die automatischen Updates (PHP)
+ *   app/lib/     Hilfen, automatische Updates und das Holen von Icons (PHP)
  *   app/views/   die App-Seite
  *   app/assets/  die App im Browser (JavaScript, CSS, Symbole), wird über diese Datei ausgeliefert
  *   data/        entsteht beim ersten Update-Check, nur für den Stand der Updates
@@ -18,7 +18,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
-define('OP_VERSION', '1.0.1');
+define('OP_VERSION', '1.1.0');
 define('OP_ROOT', __DIR__);
 define('OP_APP', OP_ROOT . '/app');
 define('OP_DATA_DIR', OP_ROOT . '/data');
@@ -83,6 +83,12 @@ if ($action === 'version') {
     echo json_encode(['version' => OP_VERSION, 'latest' => $info ? $info['v'] : null, 'newer' => opUpdNewer($info), 'error' => $err], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     opUpdLater();
     exit;
+}
+
+/* ---------- Icon einer Webseite für die App holen (nur auf Wunsch der App) ---------- */
+if ($action === 'icon') {
+    require OP_APP . '/lib/icons.php';
+    opIcon();
 }
 
 if ($action !== '') { http_response_code(404); exit; }

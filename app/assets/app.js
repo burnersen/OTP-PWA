@@ -21,7 +21,7 @@
   const DEFAULTS = {
     lang: "", mode: "auto", palL: "navy", palD: "nacht", custL: null, custD: null,
     fs: 100, cs: 100, compact: false, showNext: true, hideCodes: false,
-    autoLock: 5, leaveLock: 60, clip: 30, remind: 30, bioAuto: true,
+    autoLock: 5, leaveLock: 60, clip: 30, remind: 30, bioAuto: true, autoIcons: true,
   };
 
   const LS = {
@@ -346,7 +346,7 @@
 
   /* ---------- Dialoge ---------- */
 
-  const DIALOGS = ["dlg-entry", "dlg-details", "dlg-import", "dlg-export", "dlg-google", "dlg-scan", "dlg-settings", "dlg-mixer", "dlg-restore", "dlg-confirm", "dlg-error"];
+  const DIALOGS = ["dlg-entry", "dlg-details", "dlg-icon", "dlg-import", "dlg-export", "dlg-google", "dlg-scan", "dlg-settings", "dlg-mixer", "dlg-restore", "dlg-confirm", "dlg-error"];
   let dialogStack = [];
 
   function openDialog(id, keep) {
@@ -679,6 +679,8 @@
     e.id = old.id;
     e.created = old.created;
     e.updated = nowSecs();
+    // Neue Webseite: das alte Icon gehörte zur alten (außer man hat gleichzeitig ein anderes gewählt)
+    if (e.website !== (old.website || "") && e.icon === (old.icon || "")) e.icon = "";
     await change((list) => { list[list.findIndex((x) => x.id === e.id)] = e; });
     return e;
   }
@@ -720,7 +722,7 @@
       added++;
     }
     if (added) await change((all) => all.push(...fresh));
-    return { added, skipped };
+    return { added, skipped, ids: fresh.map((e) => e.id) };
   }
 
   /* ---------- Liste und Karten ---------- */
@@ -1005,15 +1007,7 @@
       switch (act) {
         case "edit": openEntry(e); break;
         case "details": openDetails(e); break;
-        case "iconFile":
-          state.iconFor = id;
-          el("icon-file").value = "";
-          el("icon-file").click();
-          break;
-        case "iconRemove":
-          await modifyEntry(id, (x) => { x.icon = ""; });
-          render();
-          break;
+        case "icon": openIconDialog(e); break;
         case "delete":
           if (await confirmDialog(t("confirm.delete", { name: displayName(e) }), t("confirm.deleteText"))) {
             await removeEntry(id);
@@ -1056,9 +1050,133 @@
     if (!f || !state.iconFor) return;
     try {
       const url = await iconFromFile(f);
-      await modifyEntry(state.iconFor, (e) => { e.icon = url; });
-      render();
-    } catch (err) { showError(err); }
+      await setIcon(state.iconFor, url, null);
+    } catch (err) {
+      if (!el("dlg-icon").hidden) setInlineError("icon-error", err);
+      else showError(err);
+    }
+  }
+
+  /* ---------- Icons von der Webseite des Dienstes ----------
+     Die App selbst ruft keine fremden Seiten ab. Das Icon holt der eigene Server (index.php?action=icon),
+     er bekommt dafür nur den Namen der Webseite. Auf dem Gerät wird es auf 96 × 96 Pixel als PNG umgerechnet
+     und verschlüsselt im Tresor gespeichert, danach ist es auch ohne Netz da. */
+
+  async function fetchIconFrom(param) {
+    const q = param.url ? "url=" + encodeURIComponent(param.url) : "host=" + encodeURIComponent(param.host);
+    const r = await root.fetch("./?action=icon&" + q, { headers: { "X-OTP-PWA": "1" }, credentials: "omit", cache: "no-store" });
+    if (!r.ok) {
+      let msg = "";
+      try { msg = (await r.json()).error || ""; } catch (e) { /* keine Meldung */ }
+      const err = new Error(msg || "HTTP " + r.status);
+      err.status = r.status;
+      throw err;
+    }
+    return iconFromFile(await r.blob());
+  }
+
+  // Probiert die wahrscheinlichen Webseiten des Eintrags der Reihe nach. null = keine hatte ein Icon.
+  async function findIcon(e) {
+    for (const host of C.iconHosts(e)) {
+      try {
+        return { icon: await fetchIconFrom({ host }), host };
+      } catch (err) {
+        // Kein Netz, Server ohne curl oder gebremst: weitere Versuche bringen jetzt nichts
+        if (!err.status || err.status === 429 || err.status === 501) throw err;
+      }
+    }
+    return null;
+  }
+
+  // Icon setzen (oder mit "" entfernen) und überall neu zeichnen, wo der Eintrag zu sehen ist
+  async function setIcon(id, icon, host) {
+    await modifyEntry(id, (x) => {
+      x.icon = icon;
+      if (host && !x.website) x.website = host;
+    });
+    const e = entries().find((x) => x.id === id);
+    const old = doc.querySelector('.card[data-id="' + id + '"] .avatar');
+    if (e && old) old.replaceWith(avatar(e));
+    if (e && state.iconFor === id && !el("dlg-icon").hidden) fillIconDialog(e);
+  }
+
+  const iconQueue = { ids: [], running: false, found: 0, missed: 0, report: false, failed: null };
+
+  // Icons im Hintergrund holen, eins nach dem anderen. report: am Ende melden, wie viele gefunden wurden.
+  function queueIcons(ids, report) {
+    for (const id of ids) if (!iconQueue.ids.includes(id)) iconQueue.ids.push(id);
+    if (report) iconQueue.report = true;
+    if (!iconQueue.running) runIconQueue();
+  }
+
+  async function runIconQueue() {
+    iconQueue.running = true;
+    while (iconQueue.ids.length && state.vault) {
+      const id = iconQueue.ids.shift();
+      const e = entries().find((x) => x.id === id);
+      if (!e || e.icon) continue;
+      try {
+        const r = await findIcon(e);
+        if (!state.vault) break;
+        if (r) {
+          await setIcon(id, r.icon, r.host);
+          iconQueue.found++;
+        } else {
+          iconQueue.missed++;
+        }
+      } catch (err) {
+        iconQueue.missed += 1 + iconQueue.ids.length;
+        iconQueue.ids = [];
+        iconQueue.failed = err;
+      }
+    }
+    if (iconQueue.report && state.vault) {
+      toast(iconQueue.failed && !iconQueue.found ? t("icon.offline") : t("toast.iconsDone", { found: iconQueue.found, missed: iconQueue.missed }), !!iconQueue.failed && !iconQueue.found);
+    }
+    Object.assign(iconQueue, { running: false, found: 0, missed: 0, report: false, failed: null });
+  }
+
+  function openIconDialog(e) {
+    state.iconFor = e.id;
+    el("icon-site").value = e.website || C.iconHosts(e)[0] || "";
+    el("icon-error").textContent = "";
+    fillIconDialog(e);
+    openDialog("dlg-icon");
+  }
+
+  function fillIconDialog(e) {
+    const box = el("icon-preview");
+    box.textContent = "";
+    box.appendChild(avatar(e));
+    el("icon-name").textContent = displayName(e);
+    el("icon-account").textContent = e.issuer && e.account ? e.account : "";
+    el("icon-remove").hidden = !e.icon;
+  }
+
+  async function iconFromSite(ev) {
+    ev.preventDefault();
+    const raw = el("icon-site").value.trim();
+    const id = state.iconFor;
+    el("icon-error").textContent = "";
+    if (!raw || !id) return;
+    // Eine ganze Adresse mit Pfad (Seite oder direkt ein Bild) geht so an den Server, sonst nur der Name
+    const full = /^https?:\/\/[^/]+\/.+/i.test(raw);
+    const host = C.normalizeHost(raw);
+    if (!full && !host) { el("icon-error").textContent = t("icon.badSite"); return; }
+    const btn = el("icon-fetch");
+    btn.disabled = true;
+    btn.textContent = t("lock.working");
+    try {
+      const icon = await fetchIconFrom(full ? { url: raw.replace(/^http:/i, "https:") } : { host });
+      await setIcon(id, icon, host);
+      await modifyEntry(id, (x) => { if (host) x.website = host; });
+      toast(t("icon.saved"));
+    } catch (err) {
+      el("icon-error").textContent = !err.status ? t("icon.offline") : err.status === 404 ? t("icon.notFound", { site: host || raw }) : err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("icon.fetch");
+    }
   }
 
   function scanCanvas(source, w, h, maxSide) {
@@ -1281,6 +1399,7 @@
       }
       if (!input.issuer && !input.account) { el("entry-error").textContent = t("entry.needName"); return; }
       const v = editing ? await updateEntry(input) : await addEntry(input);
+      if (state.s.autoIcons && !v.icon) queueIcons([v.id], false);
       closeDialog();
       toast(editing ? t("toast.saved") : t("toast.added", { name: displayName(v) }));
       render();
@@ -1487,6 +1606,7 @@
     btn.disabled = true;
     try {
       const r = await addMany(take);
+      if (state.s.autoIcons && r.ids.length) queueIcons(r.ids, false);
       const skipped = r.skipped + p.items.length - take.length;
       state.preview = null;
       closeDialog();
@@ -1674,7 +1794,9 @@
     el("export-size").textContent = fmtSize(f.blob.size);
     el("export-ready-warn").hidden = !["aegis", "uris", "csv"].includes(f.kind);
     const canShare = !!shareFile();
-    el("export-share").hidden = !canShare;
+    // Ein Knopf: wo das Gerät teilen kann, das Teilen-Menü (dort ist auch „In Dateien sichern“), sonst herunterladen
+    el("export-save-text").textContent = t(canShare ? "export.share" : "export.download");
+    el("export-save").onclick = canShare ? doShare : doDownload;
     el("export-ready-lead").textContent = t(canShare ? "export.readyShare" : "export.readyDownload");
     el("dlg-export").scrollTop = 0;
   }
@@ -2129,6 +2251,7 @@
     el("set-cs").value = String(s.cs);
     el("set-cs-val").textContent = s.cs + " %";
     el("set-compact").checked = s.compact;
+    el("set-autoicons").checked = s.autoIcons;
     el("set-next").checked = s.showNext;
     el("set-hidecodes").checked = s.hideCodes;
     el("set-autolock").value = String(s.autoLock);
@@ -2426,8 +2549,6 @@
     doc.querySelectorAll("input[name=export-kind]").forEach((r) => r.addEventListener("change", exportKindChanged));
     el("export-all").onclick = () => { el("export-list").querySelectorAll("input").forEach((c) => { c.checked = true; }); updateExportCount(); };
     el("export-none").onclick = () => { el("export-list").querySelectorAll("input").forEach((c) => { c.checked = false; }); updateExportCount(); };
-    el("export-share").onclick = doShare;
-    el("export-download").onclick = doDownload;
     el("export-back").onclick = () => { state.exportFile = null; el("export-step-ready").hidden = true; el("export-step-choose").hidden = false; };
     el("export-done").onclick = closeDialog;
     el("google-prev").onclick = () => { state.googleAt--; showGoogle(); };
@@ -2439,6 +2560,17 @@
     el("set-fs").oninput = () => { el("set-fs-val").textContent = el("set-fs").value + " %"; saveSettings({ fs: Number(el("set-fs").value) }); };
     el("set-cs").oninput = () => { el("set-cs-val").textContent = el("set-cs").value + " %"; saveSettings({ cs: Number(el("set-cs").value) }); };
     el("set-compact").onchange = () => saveSettings({ compact: el("set-compact").checked });
+    el("set-autoicons").onchange = () => saveSettings({ autoIcons: el("set-autoicons").checked });
+    el("set-fetchicons").onclick = () => {
+      const missing = entries().filter((e) => !e.icon).map((e) => e.id);
+      if (!missing.length) { toast(t("toast.iconsAll")); return; }
+      toast(t("toast.iconsRunning", { n: missing.length }));
+      queueIcons(missing, true);
+    };
+    el("dlg-icon").addEventListener("submit", iconFromSite);
+    el("icon-file-btn").onclick = () => { el("icon-file").value = ""; el("icon-file").click(); };
+    el("icon-remove").onclick = () => setIcon(state.iconFor, "", null).catch((err) => setInlineError("icon-error", err));
+    el("icon-done").onclick = closeDialog;
     el("set-next").onchange = () => saveSettings({ showNext: el("set-next").checked });
     el("set-hidecodes").onchange = () => saveSettings({ hideCodes: el("set-hidecodes").checked });
     el("set-autolock").onchange = () => saveSettings({ autoLock: Number(el("set-autolock").value) });

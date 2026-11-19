@@ -34,6 +34,7 @@
 - **Face ID oder Fingerabdruck:** auf Wunsch entsperrt Face ID den Tresor. Das ist kein bloßes Häkchen: Face ID gibt über einen Passkey (WebAuthn mit PRF) ein Geheimnis frei, mit dem der Tresor-Schlüssel verschlüsselt ist. Das Master-Passwort geht weiterhin.
 - **Importieren aus fast allem:** QR-Codes direkt mit der Kamera (auch mehrere hintereinander für den Google-Export), Bilder und Screenshots, otpauth-Links, ein blanker Schlüssel, Google-Authenticator-Export, Aegis (auch verschlüsselt), 2FAS (auch verschlüsselt), andOTP, Bitwarden (JSON und CSV), KeePassXC-CSV, jede CSV mit Schlüssel-Spalte, Sicherungen von otp-vault. Doppelte werden erkannt.
 - **Exportieren in jede Richtung:** verschlüsselte Sicherung (mit dem Master-Passwort oder einem eigenen), A4-Notfallblatt als PDF mit QR-Codes, QR-Codes für Google Authenticator, Aegis-JSON, otpauth-Links, CSV. Auf dem iPhone geht die Datei über „Teilen“ direkt nach „Dateien“, in die iCloud, per AirDrop oder Mail.
+- **Icons der Dienste:** beim Hinzufügen und Importieren holt die App das Icon von der Webseite des Dienstes (über deinen eigenen Server, der nur den Namen der Webseite erfährt). Passt die Webseite nicht, gibst du sie selbst ein oder wählst ein Bild oder Foto. Abschaltbar, „Fehlende Icons holen“ macht alle auf einmal.
 - **Gleiches Format wie otp-vault:** eine Sicherung von hier öffnet sich in otp-vault unter Windows und umgekehrt. Das ist mit echtem Go-Code geprüft.
 - **Zehn Designs und eigene Farben:** fünf helle, fünf dunkle, dazu je ein eigenes aus dem Farbmischer (Farbton, Sättigung, Helligkeit, Farbwähler oder Farbcode, mit Vorschau). Hell und dunkel wie das Gerät oder fest. Schriftgröße und Größe der Codes einstellbar, kompakte Liste auf Wunsch.
 - **Erinnert an Sicherungen:** wenn sich seit der letzten Sicherung etwas geändert hat (Abstand einstellbar).
@@ -55,6 +56,7 @@
 - Ein Webspace oder Server mit **PHP 7.4 oder neuer**. Keine Datenbank, keine Erweiterungen nötig.
 - **HTTPS mit eigener Domain** (Let's Encrypt reicht). Ohne HTTPS gibt es keine App auf dem Home-Bildschirm, kein Offline und kein Face ID.
 - Für automatische Updates zusätzlich: `curl` oder `allow_url_fopen`, und PHP muss die Programmdateien überschreiben dürfen. Fehlt das, läuft alles trotzdem, aktualisiert wird dann von Hand.
+- Für Icons von den Webseiten: `curl`. Ohne gehen nur eigene Bilder.
 - Auf dem Handy: iPhone mit iOS 16.4 oder neuer (Face ID ab iOS 18), Android mit Chrome. Am Rechner geht es in jedem aktuellen Browser.
 
 ## Installation
@@ -120,7 +122,7 @@ Weg sind die Daten aber, wenn du die App vom Home-Bildschirm löschst, „Websit
 - Der Tresor liegt verschlüsselt im Speicher des Browsers (IndexedDB), im Dateiformat von otp-vault: Schlüssel aus dem Master-Passwort mit **Argon2id** (64 MiB, 3 Durchläufe), Inhalt mit **XChaCha20-Poly1305**, der Kopf ist an den Inhalt gebunden. Ohne Passwort ist nichts lesbar, auch nicht die Namen der Konten. Der vorige Stand bleibt als Rückfall liegen.
 - Entsperrt sind Schlüssel und Konten nur im Arbeitsspeicher. Sperren vergisst beides.
 - **Face ID:** ein Passkey auf dem Gerät liefert nach Face ID über die WebAuthn-Erweiterung PRF ein Geheimnis. Daraus entsteht ein Schlüssel, mit dem der Tresor-Schlüssel verschlüsselt gespeichert wird. Ohne Face ID kommt niemand daran. Nach einer Passwortänderung muss Face ID neu eingeschaltet werden.
-- Die App lädt nichts von fremden Servern und schickt nichts weg (strenge Content-Security-Policy, `connect-src 'self'`). Die einzige Verbindung geht zum eigenen Server, um nach einer neuen Version zu sehen.
+- Die App lädt nichts von fremden Servern und schickt nichts weg (strenge Content-Security-Policy, `connect-src 'self'`). Verbindungen gehen nur zum eigenen Server: um nach einer neuen Version zu sehen und, wenn eingeschaltet, um Icons zu holen. Für ein Icon erfährt der Server nur den Namen der Webseite (zum Beispiel `github.com`), nie einen Schlüssel oder Nutzernamen. Er holt es nur über HTTPS von öffentlichen Adressen, nichts aus deinem internen Netz, höchstens 512 KB. Auf dem Gerät wird es auf 96 × 96 Pixel umgerechnet und verschlüsselt im Tresor gespeichert.
 - **Was du dem Server zutrauen musst:** er liefert den Programmcode. Wer den Server übernimmt, könnte eine veränderte App ausliefern. Deshalb wechseln die Handys erst nach einem Tipp auf „Aktualisieren“ auf eine neue Version, und der Server spielt nur Releases ein, deren Prüfsumme stimmt. Halte den Webspace sicher (Updates des Hosters, starke Passwörter).
 - Die Zwischenablage wird nach der eingestellten Zeit geleert, sofern das Gerät es zulässt. Das iPhone erlaubt das oft nicht.
 
@@ -138,7 +140,7 @@ Updates ganz abschalten: in `data/config.php` den Eintrag `'update_url' => ''` e
 
 ```
 index.php      Einstieg: liefert App, Dateien, Service Worker und Manifest aus (PHP)
-app/lib/       Hilfen und automatische Updates aus dem GitHub-Release (PHP)
+app/lib/       Hilfen, automatische Updates aus dem GitHub-Release, Icons holen (PHP)
 app/views/     die App-Seite (im Browser nur die Anleitung, als App das Programm)
 app/assets/    die App im Browser: core.js (Codes, Formate, Tresor, PDF), app.js (Oberfläche), i18n.js (Texte),
                app.css, sw.js (Service Worker), Bibliotheken (Argon2, XChaCha20, QR-Codes)
