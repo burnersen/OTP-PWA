@@ -1,0 +1,78 @@
+# Baut die Release-Dateien (Installer, ZIP, Prüfsummen) und hängt sie an ein GitHub-Release.
+#
+# Zwei Wege:
+#   1. Von Hand: Actions → Release → "Run workflow". Ohne Angabe heißt der Tag v<Version aus index.php>.
+#   2. Automatisch, sobald ein Tag wie v1.0.0 gepusht wird.
+# Gibt es das Release zu dem Tag schon, werden die Dateien nur angehängt bzw. ersetzt.
+# Der Text des Releases kommt aus .github/release-notes/<Version>.md, sonst von GitHub erzeugt.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag für das Release (leer = v<Version aus index.php>)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag bestimmen
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+          elif [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="v$(sed -n "s/^define('OP_VERSION', '\([^']*\)');.*/\1/p" index.php)"
+          fi
+          case "$TAG" in
+            *[!A-Za-z0-9._-]*|''|v) echo "Ungültiger Tag: $TAG"; exit 1 ;;
+          esac
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          # Gibt es den Tag schon, wird genau dieser Stand gebaut
+          git fetch --tags --quiet
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git checkout --quiet "refs/tags/$TAG"
+            echo "TAG_EXISTS=1" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prüfungen
+        run: node tools/check.js
+      - name: Dateien bauen
+        run: php tools/build-release.php
+      - name: Version passt zum Tag
+        run: |
+          V="$(sed -n "s/^define('OP_VERSION', '\([^']*\)');.*/\1/p" index.php)"
+          [ "v$V" = "$TAG" ] || { echo "Tag $TAG passt nicht zu OP_VERSION $V in index.php"; exit 1; }
+      - name: Release anlegen oder ergänzen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${TAG#v}"
+          FILES="dist/otp-pwa-install.php dist/otp-pwa-$V.zip dist/SHA256SUMS.txt"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $FILES --clobber
+          else
+            # Neuer Tag: erst anlegen, dann das Release daran hängen
+            if [ -z "$TAG_EXISTS" ]; then git tag "$TAG" && git push origin "refs/tags/$TAG"; fi
+            if [ -f ".github/release-notes/$V.md" ]; then
+              gh release create "$TAG" $FILES --title "OTP-PWA $V" --notes-file ".github/release-notes/$V.md" --verify-tag
+            else
+              gh release create "$TAG" $FILES --title "OTP-PWA $V" --generate-notes --verify-tag
+            fi
+          fi

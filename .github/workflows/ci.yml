@@ -1,0 +1,42 @@
+# Prüft jeden Push und jeden Pull Request: PHP-Syntax (7.4 und 8.3), alle Prüfungen in tools/check.js
+# (auch mit echtem Go-Code im Format von otp-vault) und dass sich das Release bauen lässt.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/gocompat/go.mod
+          cache-dependency-path: tools/gocompat/go.sum
+      - name: PHP-Syntax (PHP 7.4)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: zip
+      - run: for f in index.php app/lib/*.php app/views/*.php tools/*.php; do php -l "$f" || exit 1; done
+      - name: PHP-Syntax (PHP 8.3)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+      - run: for f in index.php app/lib/*.php app/views/*.php tools/*.php; do php -l "$f" || exit 1; done
+      - name: Go-Hilfe bauen (Format von otp-vault)
+        run: cd tools/gocompat && go vet . && go build -o "$RUNNER_TEMP/gocompat" .
+      - name: Prüfungen
+        run: GOCOMPAT="$RUNNER_TEMP/gocompat" node tools/check.js
+      - name: Release bauen
+        run: php tools/build-release.php
