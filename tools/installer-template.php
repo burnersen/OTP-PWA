@@ -212,14 +212,14 @@ $opiTitle = $opiOld ? opiT('OTP-PWA aktualisieren', 'Update OTP-PWA') : opiT('OT
         <li><?php echo opiT('Legt <code>index.php</code> und den Ordner <code>app/</code> in diesem Verzeichnis an.', 'Creates <code>index.php</code> and the folder <code>app/</code> in this directory.'); ?></li>
 <?php endif; ?>
 <?php if ($opiHasData): ?>
-        <li><?php echo opiT('Der Ordner <code>data/</code> mit den Einstellungen der Server-Verwaltung bleibt unangetastet.', 'The folder <code>data/</code> with the settings of the server administration is left untouched.'); ?></li>
+        <li><?php echo opiT('Der Ordner <code>data/</code> mit dem Stand der automatischen Updates bleibt unangetastet.', 'The folder <code>data/</code> with the state of the automatic updates is left untouched.'); ?></li>
 <?php endif; ?>
         <li><?php echo opiH(opiT('Danach löscht sich diese Installer-Datei selbst.', 'Afterwards this installer file deletes itself.')); ?></li>
 <?php foreach (opiZips($opiDir) as $z): ?>
         <li><?php echo opiT('Auch <code>', 'Also <code>') . opiH(basename($z)) . opiT('</code> wird gelöscht, die Datei wird dann nicht mehr gebraucht.', '</code> is deleted, the file is no longer needed then.'); ?></li>
 <?php endforeach; ?>
 <?php if (!$opiOld): ?>
-        <li><?php echo opiH(opiT('Danach öffnest du die Seite auf dem Handy und legst sie zum Home-Bildschirm. Der Tresor entsteht erst dort und bleibt auf dem Gerät.', 'Afterwards open the page on your phone and add it to the Home Screen. The vault is created there and stays on the device.')); ?></li>
+        <li><?php echo opiH(opiT('Danach öffnest du die Seite auf dem Handy und installierst sie als App (Zum Home-Bildschirm). Der Tresor entsteht erst in der App und bleibt auf dem Gerät.', 'Afterwards open the page on your phone and install it as an app (Add to Home Screen). The vault is created in the app and stays on the device.')); ?></li>
 <?php endif; ?>
     </ul>
     <form method="post">
