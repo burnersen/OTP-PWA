@@ -371,6 +371,61 @@
     return h;
   }
 
+  // Dienste, deren Name nicht ihre Domain ist (wie in otp-vault, dazu einige deutsche)
+  const KNOWN_SITES = {
+    google: "google.com", gmail: "google.com", microsoft: "microsoft.com", outlook: "outlook.com",
+    amazon: "amazon.com", "amazon web services": "aws.amazon.com", aws: "aws.amazon.com",
+    apple: "apple.com", facebook: "facebook.com", meta: "facebook.com", instagram: "instagram.com",
+    twitter: "x.com", x: "x.com", github: "github.com", gitlab: "gitlab.com",
+    discord: "discord.com", steam: "steampowered.com", "epic games": "epicgames.com",
+    paypal: "paypal.com", dropbox: "dropbox.com", proton: "proton.me", protonmail: "proton.me",
+    bitwarden: "bitwarden.com", cloudflare: "cloudflare.com", nextcloud: "nextcloud.com",
+    netcup: "netcup.de", contabo: "contabo.com", hetzner: "hetzner.com", ionos: "ionos.de",
+    gmx: "gmx.net", "web.de": "web.de", ebay: "ebay.de", mastodon: "joinmastodon.org",
+    reddit: "reddit.com", linkedin: "linkedin.com", twitch: "twitch.tv", ubisoft: "ubisoft.com",
+    "battle.net": "battle.net", blizzard: "battle.net", nintendo: "nintendo.com", playstation: "playstation.com",
+    sony: "playstation.com", xbox: "xbox.com", wordpress: "wordpress.com", binance: "binance.com",
+    coinbase: "coinbase.com", kraken: "kraken.com", tesla: "tesla.com", slack: "slack.com",
+    zoom: "zoom.us", atlassian: "atlassian.com", npm: "npmjs.com", pypi: "pypi.org",
+    docker: "docker.com", "docker hub": "hub.docker.com", digitalocean: "digitalocean.com",
+    sparkasse: "sparkasse.de", "deutsche bank": "deutsche-bank.de", commerzbank: "commerzbank.de",
+    ing: "ing.de", "ing-diba": "ing.de", dkb: "dkb.de", n26: "n26.com", comdirect: "comdirect.de",
+    "consorsbank": "consorsbank.de", "volksbank": "vr.de", "postbank": "postbank.de", "trade republic": "traderepublic.com",
+    "scalable capital": "scalable.capital", telekom: "telekom.de", vodafone: "vodafone.de", "1&1": "1und1.de",
+    strato: "strato.de", "all-inkl": "all-inkl.com", "all-inkl.com": "all-inkl.com", elster: "elster.de",
+    "t-online": "t-online.de", posteo: "posteo.de", "mailbox.org": "mailbox.org", tutanota: "tuta.com", tuta: "tuta.com",
+    plesk: "plesk.com", synology: "synology.com", ubiquiti: "ui.com", unifi: "ui.com", "home assistant": "home-assistant.io",
+    openai: "openai.com", anthropic: "anthropic.com", claude: "claude.ai", figma: "figma.com", notion: "notion.so",
+    shopify: "shopify.com", stripe: "stripe.com", "ko-fi": "ko-fi.com", patreon: "patreon.com", heroku: "heroku.com",
+    vercel: "vercel.com", netlify: "netlify.com", namecheap: "namecheap.com", godaddy: "godaddy.com", ovh: "ovhcloud.com",
+  };
+
+  const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // Webseiten, von denen sich das Icon eines Eintrags holen lässt, die wahrscheinlichste zuerst.
+  // Die E-Mail-Domain zählt nur, wenn sie zum Dienst passt: bei „GitHub, ich@gmail.com“ ist gmail.com falsch.
+  function iconHosts(e) {
+    const out = [];
+    const add = (h) => { h = normalizeHost(h); if (h && !out.includes(h)) out.push(h); };
+    add(e.website);
+    const issuer = String(e.issuer || "").trim();
+    const key = issuer.toLowerCase();
+    if (KNOWN_SITES[key]) add(KNOWN_SITES[key]);
+    if (/^[^\s]+\.[a-z]{2,}$/i.test(issuer)) add(issuer);
+    const m = /@([a-z0-9.-]+\.[a-z]{2,})$/i.exec(String(e.account || "").trim());
+    if (m) {
+      const domain = m[1].toLowerCase();
+      const name = domain.split(".").slice(-2, -1)[0] || "";
+      if (!issuer || (slug(issuer) && (slug(name) === slug(issuer) || slug(domain).startsWith(slug(issuer))))) add(domain);
+    }
+    const s = slug(issuer);
+    if (s.length >= 2 && !out.length) {
+      add(s + ".de");
+      add(s + ".com");
+    }
+    return out.slice(0, 3);
+  }
+
   /* ---------- Google Authenticator: otpauth-migration://offline?data=<Protobuf> ---------- */
 
   function protoReader(b) {
@@ -1162,7 +1217,7 @@
     UserError, NeedPassword, FMT, MIN_PASSWORD,
     utf8, fromUtf8, b64encode, b64decode, hexEncode, hexDecode, base32Encode, base32Decode, randomBytes, wipe, newID, uuid4,
     normalizeSecret, normalizeEntry, cleanEntry, hotpValue, formatCode, codeView, forget,
-    parseOTPAuth, buildOTPAuth, normalizeHost, parseMigration, buildMigration, googleBatches,
+    parseOTPAuth, buildOTPAuth, normalizeHost, iconHosts, parseMigration, buildMigration, googleBatches,
     parseImport, splitDataURL, iconMimeOK, exportURIList, exportCSV, exportAegis,
     newSealKey, deriveKey, seal, readSealed, openWithKey, openVault, sameBytes, kdfOK,
     sortEntries, duplicateOf, label, entryDetails, qrMatrix, qrSVG, buildPDF, csvRows,

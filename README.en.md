@@ -34,6 +34,7 @@
 - **Face ID or fingerprint:** if you like, Face ID unlocks the vault. Not just a checkbox: through a passkey (WebAuthn with PRF) Face ID releases a secret that encrypts the vault key. The master password keeps working.
 - **Import from almost anything:** QR codes straight from the camera (several in a row for the Google export), pictures and screenshots, otpauth links, a bare secret, Google Authenticator export, Aegis (also encrypted), 2FAS (also encrypted), andOTP, Bitwarden (JSON and CSV), KeePassXC CSV, any CSV with a secret column, otp-vault backups. Duplicates are recognised.
 - **Export in every direction:** encrypted backup (with the master password or its own), A4 recovery sheet as PDF with QR codes, QR codes for Google Authenticator, Aegis JSON, otpauth links, CSV. On iPhone the file goes through "Share" straight to Files, iCloud, AirDrop or Mail.
+- **Icons of the services:** when adding and importing, the app fetches the icon from the website of the service (through your own server, which only learns the name of the website). If the website does not fit, enter it yourself or choose an image or photo. Can be switched off; "Fetch missing icons" does all at once.
 - **Same format as otp-vault:** a backup from here opens in otp-vault on Windows and the other way round. Checked with real Go code.
 - **Ten designs and your own colours:** five light, five dark, plus one custom each from the colour mixer (hue, saturation, lightness, colour picker or colour code, with preview). Light and dark like the device or fixed. Font size and code size adjustable, compact list if you like.
 - **Reminds you to back up** when something changed since the last backup (interval adjustable).
@@ -55,6 +56,7 @@
 - Web space or a server with **PHP 7.4 or newer**. No database, no extensions needed.
 - **HTTPS with your own domain** (Let's Encrypt is fine). Without HTTPS there is no Home Screen app, no offline and no Face ID.
 - For automatic updates also: `curl` or `allow_url_fopen`, and PHP must be allowed to overwrite the program files. Without that everything still works, updates are then done by hand.
+- For icons from the websites: `curl`. Without it only your own images work.
 - On the phone: iPhone with iOS 16.4 or newer (Face ID from iOS 18), Android with Chrome. On a computer any current browser works.
 
 ## Installation
@@ -120,7 +122,7 @@ The data is gone, however, if you delete the app from the Home Screen, choose "C
 - The vault is stored encrypted in the browser storage (IndexedDB), in otp-vault's file format: key from the master password with **Argon2id** (64 MiB, 3 passes), content with **XChaCha20-Poly1305**, the header is bound to the content. Nothing is readable without the password, not even the names of the accounts. The previous state is kept as a fallback.
 - While unlocked, key and accounts are only in memory. Locking forgets both.
 - **Face ID:** a passkey on the device releases a secret through the WebAuthn extension PRF after Face ID. That yields a key which encrypts the stored vault key. Nobody gets to it without Face ID. After a password change Face ID has to be turned on again.
-- The app loads nothing from other servers and sends nothing away (strict Content Security Policy, `connect-src 'self'`). The only connection goes to your own server to look for a new version.
+- The app loads nothing from other servers and sends nothing away (strict Content Security Policy, `connect-src 'self'`). Connections only go to your own server: to look for a new version and, if switched on, to fetch icons. For an icon the server only learns the name of the website (for example `github.com`), never a secret or user name. It fetches only over HTTPS from public addresses, nothing from your internal network, at most 512 KB. On the device the icon is scaled to 96 × 96 pixels and stored encrypted in the vault.
 - **What you have to trust the server with:** it delivers the program code. Someone who takes over the server could deliver a changed app. That is why the phones only switch to a new version after a tap on "Update", and the server only installs releases whose checksum matches. Keep the web space safe (hoster updates, strong passwords).
 - The clipboard is cleared after the configured time if the device allows it. iPhone often does not.
 
@@ -138,7 +140,7 @@ To switch updates off completely, add `'update_url' => ''` to `data/config.php` 
 
 ```
 index.php      entry: delivers app, files, service worker and manifest (PHP)
-app/lib/       helpers and automatic updates from the GitHub release (PHP)
+app/lib/       helpers, automatic updates from the GitHub release, fetching icons (PHP)
 app/views/     the app page (in the browser only the instructions, as an app the program)
 app/assets/    the app in the browser: core.js (codes, formats, vault, PDF), app.js (interface), i18n.js (texts),
                app.css, sw.js (service worker), libraries (Argon2, XChaCha20, QR codes)

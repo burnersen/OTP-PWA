@@ -131,8 +131,7 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
   <div id="card-menu" class="menu" role="menu" hidden>
     <button type="button" data-act="edit" data-i18n="card.edit"></button>
     <button type="button" data-act="details" data-i18n="card.details"></button>
-    <button type="button" data-act="iconFile" data-i18n="card.iconFile"></button>
-    <button type="button" data-act="iconRemove" data-i18n="card.iconRemove"></button>
+    <button type="button" data-act="icon" data-i18n="card.icon"></button>
     <hr>
     <button type="button" data-act="delete" class="danger" data-i18n="card.delete"></button>
   </div>
@@ -277,8 +276,7 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
         <p class="muted" id="export-ready-lead"></p>
         <p class="warn-box" id="export-ready-warn" data-i18n="export.warn" hidden></p>
         <div class="stack">
-          <button type="button" class="primary big wide" id="export-share"><span data-i18n="export.share"></span></button>
-          <button type="button" class="ghost big wide" id="export-download"><span data-i18n="export.download"></span></button>
+          <button type="button" class="primary big wide" id="export-save"><span id="export-save-text"></span></button>
         </div>
         <div class="dialog-buttons">
           <button type="button" class="ghost" id="export-back" data-i18n="common.back"></button>
@@ -286,6 +284,23 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
         </div>
       </div>
     </div>
+
+    <form id="dlg-icon" class="dialog narrow" hidden autocomplete="off">
+      <h2 data-i18n="icon.title"></h2>
+      <div class="icon-head">
+        <div id="icon-preview"></div>
+        <div class="names"><div class="issuer" id="icon-name"></div><div class="account" id="icon-account"></div></div>
+      </div>
+      <label class="field"><span data-i18n="icon.site"></span><input id="icon-site" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" data-i18n-ph="icon.sitePh" enterkeyhint="go"></label>
+      <p class="hint" data-i18n="icon.siteHint"></p>
+      <div class="stack">
+        <button type="submit" class="primary wide" id="icon-fetch" data-i18n="icon.fetch"></button>
+        <button type="button" class="ghost wide" id="icon-file-btn" data-i18n="icon.file"></button>
+        <button type="button" class="ghost wide danger-text" id="icon-remove" data-i18n="icon.remove"></button>
+      </div>
+      <p class="error-text" id="icon-error" role="alert"></p>
+      <div class="dialog-buttons"><button type="button" class="primary" id="icon-done" data-i18n="common.done"></button></div>
+    </form>
 
     <div id="dlg-google" class="dialog narrow center" hidden>
       <h2 data-i18n="export.googleTitle"></h2>
@@ -343,6 +358,12 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
           <label class="field range"><span><span data-i18n="settings.codeSize"></span> <b id="set-cs-val"></b></span><input id="set-cs" type="range" min="70" max="150" step="5"></label>
           <label class="check"><input type="checkbox" id="set-compact"><span data-i18n="settings.compact"></span></label>
           <label class="check"><input type="checkbox" id="set-next"><span data-i18n="settings.showNext"></span></label>
+        </section>
+        <section>
+          <h3 data-i18n="settings.icons"></h3>
+          <label class="check"><input type="checkbox" id="set-autoicons"><span data-i18n="settings.autoIcons"></span></label>
+          <p class="hint" data-i18n="settings.autoIconsHint"></p>
+          <button type="button" class="ghost" id="set-fetchicons" data-i18n="settings.fetchIcons"></button>
         </section>
         <section>
           <h3 data-i18n="settings.security"></h3>

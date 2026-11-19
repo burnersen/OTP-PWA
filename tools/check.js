@@ -123,6 +123,17 @@ test("Google-Authenticator-Export hin und zurück", () => {
   assert.strictEqual(C.googleBatches(many).length, 3);
 });
 
+test("Webseite fürs Icon erraten", () => {
+  assert.deepStrictEqual(C.iconHosts({ issuer: "GitHub", account: "ich@gmail.com" }), ["github.com"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "Firma", account: "max@firma.de" }), ["firma.de"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "", account: "max@meine-firma.de" }), ["meine-firma.de"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "Sparkasse", account: "Max" }), ["sparkasse.de"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "firma.de" }), ["firma.de"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "Meine Bank" }), ["meinebank.de", "meinebank.com"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "Example", website: "https://Login.Example.org/x" }), ["login.example.org"]);
+  assert.deepStrictEqual(C.iconHosts({ issuer: "?" }), []);
+});
+
 /* ---------- Import ---------- */
 
 test("Text, Schlüssel und CSV importieren", async () => {
@@ -307,7 +318,7 @@ test("Texte: Deutsch und Englisch haben dieselben Schlüssel", () => {
 test("Texte: jeder benutzte Schlüssel existiert", () => {
   const sources = ["app/assets/app.js", "app/assets/core.js", "app/views/app.php"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n");
   const used = new Set();
-  for (const m of sources.matchAll(/["']((?:lock|install|top|list|card|toast|entry|details|scan|import|export|sheet|restore|backup|update|bio|settings|pal|mixer|wipe|confirm|error|common|lang|e|h)\.[a-zA-Z0-9]+)["']/g)) used.add(m[1]);
+  for (const m of sources.matchAll(/["']((?:lock|inst|icon|top|list|card|toast|entry|details|scan|import|export|sheet|restore|backup|update|bio|settings|pal|mixer|wipe|confirm|error|common|lang|e|h)\.[a-zA-Z0-9]+)["']/g)) used.add(m[1]);
   for (const id of Object.keys(APP.PALS.light).concat(Object.keys(APP.PALS.dark), ["own"])) used.add("pal." + id);
   for (const p of APP.PARTS) used.add("mixer." + p);
   const missing = [...used].filter((k) => !(k in TEXTS.de) && !/\.(js|php|png|css|svg)$/.test(k));
