@@ -4,13 +4,13 @@
  *
  * Der Server liefert nur die App aus. Einmal auf dem Handy installiert (Zum Home-Bildschirm),
  * läuft sie ganz auf dem Gerät: Tresor, Schlüssel und Konten verlassen das Handy nie.
- * Hier auf dem Server liegen nur das Programm und in data/ die Einstellungen der Server-Verwaltung
- * (Updates). Es gibt keine Datenbank und keine Konten.
+ * Im Browser zeigt die Seite nur, wie man die App installiert. Auf dem Server liegen nur das Programm und
+ * in data/ der Stand der automatischen Updates. Es gibt keine Datenbank, keine Konten und kein Passwort.
  *
- *   app/lib/     Hilfen, Updates, Server-Verwaltung (PHP)
- *   app/views/   die App-Seite und die Server-Verwaltung
+ *   app/lib/     Hilfen und die automatischen Updates (PHP)
+ *   app/views/   die App-Seite
  *   app/assets/  die App im Browser (JavaScript, CSS, Symbole), wird über diese Datei ausgeliefert
- *   data/        entsteht beim ersten Aufruf, nur für die Server-Verwaltung
+ *   data/        entsteht beim ersten Update-Check, nur für den Stand der Updates
  *
  * Lizenz: GNU General Public License v3.0, siehe Datei LICENSE.
  */
@@ -18,7 +18,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
-define('OP_VERSION', '1.0.0');
+define('OP_VERSION', '1.0.1');
 define('OP_ROOT', __DIR__);
 define('OP_APP', OP_ROOT . '/app');
 define('OP_DATA_DIR', OP_ROOT . '/data');
@@ -78,15 +78,10 @@ if ($action === 'version') {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     $info = opUpdInfo();
-    echo json_encode(['version' => OP_VERSION, 'latest' => $info ? $info['v'] : null, 'newer' => opUpdNewer($info)], JSON_UNESCAPED_SLASHES);
+    $cfg = opConfig();
+    $err = !empty($cfg['upd_error']) && (int)($cfg['upd_error_at'] ?? 0) >= (int)($cfg['upd_at'] ?? 0) - 60 ? (string)$cfg['upd_error'] : null;
+    echo json_encode(['version' => OP_VERSION, 'latest' => $info ? $info['v'] : null, 'newer' => opUpdNewer($info), 'error' => $err], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     opUpdLater();
-    exit;
-}
-
-/* ---------- Server-Verwaltung: Updates einspielen, zurück zur vorigen Version ---------- */
-if ($action === 'admin') {
-    require OP_APP . '/lib/admin.php';
-    opAdmin();
     exit;
 }
 

@@ -1,8 +1,9 @@
 <?php
-/* OTP-PWA – Updates aus dem GitHub-Release, wie bei Kaufen: nachsehen, Installer laden, Prüfsumme prüfen,
-   laufende Version zur Seite legen, neue einspielen. Zurück zur vorigen Version geht mit einem Knopf.
-   Nach außen geht hier nur etwas, wenn jemand in der Server-Verwaltung nach Updates sucht
-   oder das tägliche Nachsehen an ist (Standard). Persönliches geht dabei nie raus. */
+/* OTP-PWA – automatische Updates aus dem GitHub-Release: einmal am Tag nachsehen, Installer laden,
+   Prüfsumme prüfen, neue Version einspielen. Ohne Passwort und ohne Knopf, der Server macht das selbst.
+   Persönliches geht dabei nie raus. Abschalten: in data/config.php 'update_url' => '' eintragen.
+   Zurück zu einer älteren Version: deren otp-pwa-install.php aus dem Release hochladen und aufrufen
+   (vorher 'update_url' => '' setzen, sonst kommt am nächsten Tag wieder die neueste). */
 defined('OP_VERSION') || exit;
 
 /** Woher die Updates kommen. In data/config.php lässt sich mit 'update_url' eine andere Adresse eintragen, '' schaltet sie ab. */
@@ -59,7 +60,7 @@ function opUpdCheck(): array {
         }
     }
     if (!preg_match('~^[0-9][0-9A-Za-z.\-]*$~', $info['v'])) throw new RuntimeException(opT('Die Antwort des Update-Servers ist unbrauchbar.', 'The answer of the update server is unusable.'));
-    if (opDataReady()) opSet(['upd_info' => $info]);
+    if (opDataReady()) opSet(['upd_info' => $info, 'upd_error' => '']);
     return $info;
 }
 
@@ -89,23 +90,6 @@ function opPayloadParse(string $raw): ?array {
         $files[$p[0]] = $bin;
     }
     return isset($files['index.php'], $files['app/assets/app.js']) ? $files : null;
-}
-
-/** Die laufende Version in einer Datei festhalten (gleiches Format), damit man zu ihr zurückkann */
-function opPayloadSave(string $file): void {
-    $list = ['index.php', 'LICENSE'];
-    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(OP_APP, FilesystemIterator::SKIP_DOTS));
-    foreach ($it as $f) if ($f->isFile()) $list[] = 'app/' . str_replace('\\', '/', substr($f->getPathname(), strlen(OP_APP) + 1));
-    $out = '#OTP-PWA ' . OP_VERSION . "\n";
-    foreach ($list as $path) {
-        if (!is_file(OP_ROOT . '/' . $path) || !preg_match('~^(?:index\.php|LICENSE|app(?:/[A-Za-z0-9._\-]+)+)$~', $path)) continue;
-        $bin = (string)file_get_contents(OP_ROOT . '/' . $path);
-        $out .= $path . "\t" . hash('sha256', $bin) . "\t" . base64_encode($bin) . "\n";
-    }
-    if (@file_put_contents($file, $out, LOCK_EX) !== strlen($out)) {
-        throw new RuntimeException(opT('Die laufende Version konnte nicht gesichert werden. Bitte die Schreibrechte von data/ prüfen.', 'The running version could not be saved. Please check the permissions of data/.'));
-    }
-    @chmod($file, 0600);
 }
 
 /** Dateien einspielen wie der Installer: alles erst unter Zwischennamen schreiben, dann umbenennen, Überbleibsel in app/ wegräumen */
@@ -144,7 +128,7 @@ function opUpdWritable(): string {
     return '';
 }
 
-/** Neueste Version holen, prüfen und einspielen. Die laufende Version wird vorher in data/update-prev.txt gelegt. */
+/** Neueste Version holen, prüfen und einspielen */
 function opUpdInstall(?array $info = null): string {
     $info = $info ?: opUpdCheck();
     if (!opUpdNewer($info)) throw new RuntimeException(opT('Du hast schon die neueste Version.', 'You already have the latest version.'));
@@ -158,34 +142,12 @@ function opUpdInstall(?array $info = null): string {
     if (!$files || !preg_match("~define\\('OP_VERSION',\\s*'" . preg_quote($info['v'], '~') . "'\\)~", $files['index.php'])) {
         throw new RuntimeException(opT('Die heruntergeladene Datei ist unbrauchbar. Es wurde nichts verändert.', 'The downloaded file is unusable. Nothing was changed.'));
     }
-    opPayloadSave(OP_DATA_DIR . '/update-prev.txt');
     opPayloadInstall($files);
     return $info['v'];
 }
 
-/** Version, zu der man zurückkann ('' = keine) */
-function opUpdPrev(): string {
-    $f = OP_DATA_DIR . '/update-prev.txt';
-    if (!is_file($f)) return '';
-    $fp = @fopen($f, 'rb');
-    $head = $fp ? (string)fgets($fp, 100) : '';
-    if ($fp) fclose($fp);
-    return preg_match('~^#OTP-PWA ([0-9][0-9A-Za-z.\-]*)~', $head, $m) ? $m[1] : '';
-}
-
-/** Zurück zur Version vor dem letzten Update */
-function opUpdRollback(): string {
-    $v = opUpdPrev();
-    $files = $v !== '' ? opPayloadParse((string)file_get_contents(OP_DATA_DIR . '/update-prev.txt')) : null;
-    if (!$files) throw new RuntimeException(opT('Es gibt keine vorige Version.', 'There is no previous version.'));
-    if (($w = opUpdWritable()) !== '') throw new RuntimeException(opT('Die Datei ließ sich nicht schreiben: ', 'This file could not be written: ') . $w . '. ' . opT('PHP braucht Schreibrechte im Ordner von OTP-PWA.', 'PHP needs write access to the OTP-PWA folder.'));
-    opPayloadInstall($files);
-    @unlink(OP_DATA_DIR . '/update-prev.txt');
-    return $v;
-}
-
 /**
- * Einmal am Tag nachsehen (und auf Wunsch gleich einspielen). Hängt nur an Anfragen, die die App im Hintergrund
+ * Einmal am Tag nachsehen und eine neue Version gleich einspielen. Hängt nur an Anfragen, die die App im Hintergrund
  * stellt (Service Worker, Versionsabfrage), nie an der Seite selbst, und läuft erst, nachdem die Antwort raus ist.
  * Fehler werden still geschluckt, beim nächsten Mal geht es weiter.
  */
@@ -199,9 +161,9 @@ function opUpdLater(): void {
         if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return;
         try {
             $info = opUpdCheck();
-            if ((opConfig(true)['upd_auto'] ?? false) && opUpdNewer($info)) {
+            if ((opConfig(true)['upd_auto'] ?? true) && opUpdNewer($info)) {
                 $v = opUpdInstall($info);
-                opSet(['upd_last' => ['v' => $v, 'at' => time(), 'auto' => true]]);
+                opSet(['upd_last' => ['v' => $v, 'at' => time()], 'upd_error' => '']);
             }
         } catch (Throwable $e) {
             if (opDataReady()) { try { opSet(['upd_error' => substr($e->getMessage(), 0, 300), 'upd_error_at' => time()]); } catch (Throwable $e2) {} }

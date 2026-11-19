@@ -8,7 +8,7 @@
 
 ### Deine Zwei-Faktor-Codes als App aufs Handy, verschlüsselt und ganz auf dem Gerät
 
-**Der kleine Bruder von [otp-vault](https://github.com/burnersen/otp-vault).** Einmal vom eigenen Webspace aufrufen, zum Home-Bildschirm hinzufügen, fertig: ab dann läuft alles nur noch auf dem Handy, auch ohne Netz. Gleiches Tresor-Format wie otp-vault, gleiche Importe und Exporte, dazu Face ID.
+**Der kleine Bruder von [otp-vault](https://github.com/burnersen/otp-vault).** Auf dem eigenen Webspace steht nur die Anleitung „So installierst du die App“. Einmal zum Home-Bildschirm hinzugefügt, läuft alles nur noch auf dem Handy, auch ohne Netz. Gleiches Tresor-Format wie otp-vault, gleiche Importe und Exporte, dazu Face ID.
 
 [![PHP 7.4+](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php&logoColor=white)](#voraussetzungen)
 [![PWA](https://img.shields.io/badge/PWA-iPhone%20%7C%20Android-1c3f78)](#aufs-handy)
@@ -30,7 +30,7 @@
 ## Was es kann
 
 - **Alle Codes auf einen Blick:** große, gut lesbare Codes mit Countdown-Ring und dem nächsten Code darunter. TOTP, HOTP und Steam, SHA1, SHA256 und SHA512, 6 bis 8 Stellen, jede Gültigkeit. Antippen kopiert.
-- **Ganz auf dem Gerät:** der Server liefert nur die App aus. Tresor, Schlüssel und Konten verlassen das Handy nie, es gibt kein Konto und keinen Login, nur dein Master-Passwort.
+- **Ganz auf dem Gerät:** der Server liefert nur die App aus, im Browser zeigt die Seite nichts als die Anleitung zum Installieren. Tresor, Schlüssel und Konten verlassen das Handy nie. Es gibt kein Konto, keinen Login und kein Server-Passwort, nur dein Master-Passwort in der App.
 - **Face ID oder Fingerabdruck:** auf Wunsch entsperrt Face ID den Tresor. Das ist kein bloßes Häkchen: Face ID gibt über einen Passkey (WebAuthn mit PRF) ein Geheimnis frei, mit dem der Tresor-Schlüssel verschlüsselt ist. Das Master-Passwort geht weiterhin.
 - **Importieren aus fast allem:** QR-Codes direkt mit der Kamera (auch mehrere hintereinander für den Google-Export), Bilder und Screenshots, otpauth-Links, ein blanker Schlüssel, Google-Authenticator-Export, Aegis (auch verschlüsselt), 2FAS (auch verschlüsselt), andOTP, Bitwarden (JSON und CSV), KeePassXC-CSV, jede CSV mit Schlüssel-Spalte, Sicherungen von otp-vault. Doppelte werden erkannt.
 - **Exportieren in jede Richtung:** verschlüsselte Sicherung (mit dem Master-Passwort oder einem eigenen), A4-Notfallblatt als PDF mit QR-Codes, QR-Codes für Google Authenticator, Aegis-JSON, otpauth-Links, CSV. Auf dem iPhone geht die Datei über „Teilen“ direkt nach „Dateien“, in die iCloud, per AirDrop oder Mail.
@@ -38,7 +38,7 @@
 - **Zehn Designs und eigene Farben:** fünf helle, fünf dunkle, dazu je ein eigenes aus dem Farbmischer (Farbton, Sättigung, Helligkeit, Farbwähler oder Farbcode, mit Vorschau). Hell und dunkel wie das Gerät oder fest. Schriftgröße und Größe der Codes einstellbar, kompakte Liste auf Wunsch.
 - **Erinnert an Sicherungen:** wenn sich seit der letzten Sicherung etwas geändert hat (Abstand einstellbar).
 - **Sperrt sich selbst:** nach einer Weile ohne Benutzung und wenn die App in den Hintergrund geht (beides einstellbar). Beim Verlassen der App werden die Codes unscharf geschaltet.
-- **Aktualisiert sich selbst:** der Server holt neue Versionen aus dem GitHub-Release (Prüfsumme, zurück geht mit einem Knopf), die Handys übernehmen sie nach einem Tipp.
+- **Aktualisiert sich selbst:** der Server holt neue Versionen einmal am Tag aus dem GitHub-Release (mit Prüfsumme), die Handys übernehmen sie nach einem Tipp.
 - **Deutsch und Englisch.**
 
 <table>
@@ -54,7 +54,7 @@
 
 - Ein Webspace oder Server mit **PHP 7.4 oder neuer**. Keine Datenbank, keine Erweiterungen nötig.
 - **HTTPS mit eigener Domain** (Let's Encrypt reicht). Ohne HTTPS gibt es keine App auf dem Home-Bildschirm, kein Offline und kein Face ID.
-- Für Updates per Knopfdruck zusätzlich: `curl` oder `allow_url_fopen`, und PHP muss die Programmdateien überschreiben dürfen. Fehlt das, läuft alles trotzdem, aktualisiert wird dann von Hand.
+- Für automatische Updates zusätzlich: `curl` oder `allow_url_fopen`, und PHP muss die Programmdateien überschreiben dürfen. Fehlt das, läuft alles trotzdem, aktualisiert wird dann von Hand.
 - Auf dem Handy: iPhone mit iOS 16.4 oder neuer (Face ID ab iOS 18), Android mit Chrome. Am Rechner geht es in jedem aktuellen Browser.
 
 ## Installation
@@ -62,8 +62,7 @@
 1. Aus dem [neuesten Release](../../releases/latest) die Datei `otp-pwa-install.php` herunterladen und in ein Verzeichnis auf dem Webspace kopieren, zum Beispiel `https://deine-domain.de/otp/`.
 2. PHP muss in dieses Verzeichnis schreiben dürfen (es legt dort `index.php` und den Ordner `app/` an, später `data/`).
 3. `otp-pwa-install.php` im Browser aufrufen und auf „Jetzt installieren“ tippen. Die Datei packt das Programm aus und löscht sich danach selbst. Meldet sie, dass das nicht ging, bitte von Hand löschen.
-4. Gleich danach `https://deine-domain.de/otp/?action=admin` aufrufen und das Passwort der **Server-Verwaltung** festlegen (damit spielst du später Updates ein). Wer diese Seite als Erster aufruft, legt es fest, also nicht aufschieben. Mit deinen Konten hat das nichts zu tun, die kennt der Server nicht.
-5. **Prüfen, dass die internen Ordner gesperrt sind:** `https://deine-domain.de/otp/app/lib/common.php` und `https://deine-domain.de/otp/data/config.php` müssen „403 Forbidden“ oder „404 Not Found“ zeigen. Unter Apache und LiteSpeed erledigen das die mitgelieferten `.htaccess`-Dateien. Unter **nginx** gehören diese Zeilen in den `server`-Block (Pfad anpassen):
+4. **Prüfen, dass die internen Ordner gesperrt sind:** `https://deine-domain.de/otp/app/lib/common.php` und `https://deine-domain.de/otp/data/config.php` müssen „403 Forbidden“ oder „404 Not Found“ zeigen. Unter Apache und LiteSpeed erledigen das die mitgelieferten `.htaccess`-Dateien. Unter **nginx** gehören diese Zeilen in den `server`-Block (Pfad anpassen):
 
 ```nginx
 # OTP-PWA liegt hier im Ordner /otp/. Liegt es direkt im Hauptverzeichnis, /otp weglassen.
@@ -82,15 +81,21 @@ sudo cp -a /etc/nginx/sites-available/default.bak /etc/nginx/sites-available/def
 
 Alles in `app/` liefert OTP-PWA selbst über `index.php` aus, ein direkter Zugriff ist nie nötig. Selbst wenn die Sperre fehlt, liegt dort nichts Geheimes: der Server kennt keine Konten.
 
+> **Plesk und andere Server mit nginx vor Apache:** Ist „Statische Dateien direkt durch nginx bedienen“ an, liefert nginx Dateien wie `.txt`, `.html` oder `.zip` an der `.htaccess` vorbei aus. Dann entweder den Haken rausnehmen oder die nginx-Zeilen oben bei „Zusätzliche nginx-Anweisungen“ eintragen. Test: `https://deine-domain.de/otp/data/index.html` muss „403“ zeigen, nicht eine leere Seite (`data/` entsteht beim ersten Update-Check).
+
 **Lieber von Hand?** Im Release liegt auch `otp-pwa-<Version>.zip`. Den Inhalt des Ordners `otp-pwa/` hochladen, also `index.php` **und** den Ordner `app/`, dann weiter mit Schritt 4.
+
+Ein Passwort für den Server gibt es nicht: die Webseite nimmt nichts an und zeigt im Browser nur die Anleitung zum Installieren.
 
 ## Aufs Handy
 
-**iPhone:** die Adresse in **Safari** öffnen, unten auf das Teilen-Symbol tippen, dann „Zum Home-Bildschirm“. OTP-PWA vom Home-Bildschirm starten und **erst dort** den Tresor anlegen.
+Im Browser zeigt die Seite nur die Anleitung, passend zum Gerät. Das Programm selbst startet erst als installierte App, so landet der Tresor nie aus Versehen im Browser.
 
-> ⚠️ Auf dem iPhone haben Safari und die App vom Home-Bildschirm **getrennte Speicher**. Ein in Safari angelegter Tresor ist in der App nicht da. Die App weist darauf hin.
+**iPhone:** die Adresse in **Safari** öffnen (nicht im privaten Modus), auf das Teilen-Symbol tippen, dann „Zum Home-Bildschirm“ und „Hinzufügen“. OTP-PWA vom Home-Bildschirm starten.
 
-**Android:** die Adresse in Chrome öffnen, „Installieren“ antippen (oder im Menü „App installieren“).
+**Android:** die Adresse in Chrome öffnen, „App installieren“ antippen (oder im Menü „App installieren“).
+
+**Rechner:** in Chrome oder Edge auf das Installieren-Symbol in der Adressleiste klicken, in Safari auf dem Mac „Ablage“ und „Zum Dock hinzufügen“. Firefox kann keine Apps installieren.
 
 Danach: Master-Passwort wählen, Konten hinzufügen (QR-Code mit der Kamera scannen, Link oder Schlüssel einfügen) oder importieren. In den Einstellungen Face ID einschalten.
 
@@ -121,23 +126,23 @@ Weg sind die Daten aber, wenn du die App vom Home-Bildschirm löschst, „Websit
 
 ## Aktualisieren
 
-**Am einfachsten:** `?action=admin` aufrufen, anmelden, „Jetzt nach Updates suchen“ und „Jetzt aktualisieren“. OTP-PWA lädt den Installer aus dem GitHub-Release, prüft ihn per Prüfsumme, legt die laufende Version zur Seite und spielt die neue ein. „Zurück zu Version …“ holt die vorige zurück. Auf Wunsch sieht der Server einmal am Tag selbst nach und spielt neue Versionen gleich ein.
+**Von selbst:** einmal am Tag sieht der Server im GitHub-Release nach (angestoßen, wenn eine App nach einer neuen Version fragt). Gibt es eine neue, lädt er den Installer, prüft ihn per Prüfsumme und spielt ihn ein. Ein Knopf oder Passwort ist dafür nicht nötig. Ob es geklappt hat, steht in der App unter *Einstellungen → Über*.
 
 Die Handys merken die neue Version beim nächsten Öffnen der App und zeigen „Neue Version bereit“. Ein Tipp auf „Aktualisieren“ lädt sie, danach kurz neu entsperren. Der Tresor bleibt dabei unangetastet.
 
-**Von Hand:** den neuen `otp-pwa-install.php` hochladen und aufrufen. Ersetzt werden nur die Programmdateien.
+**Von Hand:** den neuen `otp-pwa-install.php` hochladen und aufrufen. Ersetzt werden nur die Programmdateien. Genauso kommst du zu einer älteren Version zurück: deren Installer aus dem Release hochladen und aufrufen.
 
-Updates ganz abschalten: in `data/config.php` den Eintrag `'update_url' => ''` ergänzen.
+Updates ganz abschalten: in `data/config.php` den Eintrag `'update_url' => ''` ergänzen (sonst kommt am nächsten Tag wieder die neueste Version).
 
 ## Aufbau
 
 ```
 index.php      Einstieg: liefert App, Dateien, Service Worker und Manifest aus (PHP)
-app/lib/       Hilfen, Updates aus dem GitHub-Release, Server-Verwaltung (PHP)
-app/views/     die App-Seite und die Server-Verwaltung
+app/lib/       Hilfen und automatische Updates aus dem GitHub-Release (PHP)
+app/views/     die App-Seite (im Browser nur die Anleitung, als App das Programm)
 app/assets/    die App im Browser: core.js (Codes, Formate, Tresor, PDF), app.js (Oberfläche), i18n.js (Texte),
                app.css, sw.js (Service Worker), Bibliotheken (Argon2, XChaCha20, QR-Codes)
-data/          entsteht auf dem Server, nur für die Server-Verwaltung
+data/          entsteht auf dem Server, nur für den Stand der Updates
 tools/         Prüfungen (node tools/check.js) und Release-Bau (php tools/build-release.php)
 ```
 

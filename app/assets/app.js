@@ -330,6 +330,7 @@
     fillSelects();
     if (!el("lock-view").hidden) showLock();
     if (state.vault) render();
+    if (!el("install-view").hidden) showInstall();
     renderBanners();
   }
 
@@ -432,7 +433,8 @@
 
   /* ---------- Umgebung: installiert? iPhone? ---------- */
 
-  const isStandalone = () => !!((root.matchMedia && root.matchMedia("(display-mode: standalone)").matches) || root.navigator.standalone);
+  const isStandalone = () => !!(root.navigator.standalone ||
+    (root.matchMedia && ["standalone", "fullscreen", "minimal-ui", "window-controls-overlay"].some((m) => root.matchMedia("(display-mode: " + m + ")").matches)));
   const isIOS = () => /iPad|iPhone|iPod/.test(root.navigator.userAgent) || (root.navigator.platform === "MacIntel" && root.navigator.maxTouchPoints > 1);
 
   /* ---------- Sperrbildschirm ---------- */
@@ -449,13 +451,9 @@
     el("lock-pw").autocomplete = create ? "new-password" : "current-password";
     el("lock-restore").hidden = !create;
     el("lock-reset").hidden = create;
-    // Auf dem iPhone haben Safari und die App vom Home-Bildschirm getrennte Speicher: erst installieren, dann anlegen
-    el("lock-ios").hidden = !(create && isIOS() && !isStandalone());
-    el("lock-ios").textContent = t("lock.iosFirst");
     const bio = !create && !!state.bio;
     el("lock-bio").hidden = !bio;
     el("lock-bio-text").textContent = t("bio.unlock", { name: bioName() });
-    renderInstallCard();
     updateMeter();
   }
 
@@ -1771,25 +1769,64 @@
         [t("backup.now"), () => openExport("backup"), true],
       ]));
     }
-    if (!isStandalone() && !LS.get("installHidden", false)) {
-      box.appendChild(installBanner());
+  }
+
+  /* ---------- Im Browser: nur die Anleitung zum Installieren ----------
+     Das Programm läuft nur als installierte App. So landet der Tresor nie aus Versehen im Speicher des Browsers
+     (auf dem iPhone sind Safari und die App vom Home-Bildschirm getrennt), und die Webseite selbst nimmt nichts an. */
+
+  function platform() {
+    const ua = root.navigator.userAgent;
+    if (isIOS()) return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "iosOther" : "ios";
+    if (/Android/i.test(ua)) return "android";
+    if (/Firefox\//.test(ua)) return "firefox";
+    if (/Safari\//.test(ua) && !/Chrome|Chromium|Edg\//.test(ua)) return "macSafari";
+    return "desktop";
+  }
+
+  const STEP_ICONS = {
+    share: "M12 3v12M8 7l4-4 4 4M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8",
+    menu: "M12 6h.01M12 12h.01M12 18h.01",
+    install: "M12 4v11m0 0-4-4m4 4 4-4M4 20h16",
+  };
+
+  // Ein Schritt der Anleitung, {share} usw. wird zum passenden Symbol
+  function stepItem(text) {
+    const li = make("li");
+    const span = make("span");
+    for (const part of text.split(/(\{\w+\})/)) {
+      const m = /^\{(\w+)\}$/.exec(part);
+      if (m && STEP_ICONS[m[1]]) {
+        const ico = make("span", "ico");
+        ico.appendChild(svgIcon(STEP_ICONS[m[1]]));
+        span.appendChild(ico);
+      } else if (part) {
+        span.appendChild(doc.createTextNode(part));
+      }
     }
+    li.appendChild(span);
+    return li;
   }
 
-  function installBanner() {
-    const buttons = [[t("install.hide"), () => { LS.set("installHidden", true); renderBanners(); renderInstallCard(); }]];
-    if (state.installEvent) buttons.push([t("install.now"), promptInstall, true]);
-    return banner("", t("install.title"), t(isIOS() ? "install.ios" : state.installEvent ? "install.android" : "install.other"), buttons);
-  }
-
-  function renderInstallCard() {
-    const card = el("lock-install");
-    card.textContent = "";
-    card.hidden = isStandalone() || LS.get("installHidden", false);
-    if (card.hidden) return;
-    const b = installBanner();
-    card.appendChild(b.firstChild);
-    card.appendChild(b.lastChild);
+  function showInstall() {
+    el("lock-view").hidden = true;
+    el("main-view").hidden = true;
+    el("install-view").hidden = false;
+    const p = platform();
+    const steps = {
+      ios: ["inst.ios1", "inst.ios2", "inst.ios3", "inst.ios4"],
+      iosOther: ["inst.ios1", "inst.ios2", "inst.ios3", "inst.ios4"],
+      android: ["inst.android1", "inst.android2", "inst.android3"],
+      desktop: ["inst.desktop1", "inst.desktop2"],
+      macSafari: ["inst.mac1", "inst.mac2"],
+      firefox: ["inst.firefox"],
+    }[p];
+    el("inst-title").textContent = t(p.startsWith("ios") ? "inst.titleIos" : p === "android" ? "inst.titleAndroid" : "inst.titleDesktop");
+    const ol = el("inst-steps");
+    ol.textContent = "";
+    for (const k of steps) ol.appendChild(stepItem(t(k)));
+    el("inst-button").hidden = !state.installEvent;
+    el("inst-hint").textContent = p === "ios" ? t("inst.private") : p === "iosOther" ? t("inst.iosOther") + " " + t("inst.private") : "";
   }
 
   function promptInstall() {
@@ -1797,7 +1834,9 @@
     if (!ev) return;
     state.installEvent = null;
     ev.prompt();
-    ev.userChoice.finally(() => { renderBanners(); renderInstallCard(); });
+    ev.userChoice.then((r) => {
+      if (r && r.outcome === "accepted") el("inst-done").hidden = false;
+    }).finally(showInstall);
   }
 
   /* ---------- Updates (Service Worker) ---------- */
@@ -2115,13 +2154,13 @@
         if (e && e.usage) storage += " " + t("settings.storageUsed", { size: fmtSize(e.usage) });
       }
     } catch (e) { /* bleibt bei „unbekannt“ */ }
-    if (!isStandalone()) storage += " " + t("settings.storageBrowser");
     el("set-storage").textContent = storage;
     el("set-server").textContent = "";
     serverInfo().then((info) => {
       if (!info || el("dlg-settings").hidden) return;
       let txt = t("settings.serverVersion", { v: info.version });
       if (info.latest && info.newer) txt += " " + t("settings.serverNewer", { v: info.latest });
+      if (info.error) txt += " " + t("settings.serverError", { msg: info.error });
       el("set-server").textContent = txt;
     });
   }
@@ -2496,10 +2535,14 @@
     root.addEventListener("beforeinstallprompt", (ev) => {
       ev.preventDefault();
       state.installEvent = ev;
-      renderBanners();
-      renderInstallCard();
+      if (!el("install-view").hidden) showInstall();
     });
-    root.addEventListener("appinstalled", () => { state.installEvent = null; renderBanners(); renderInstallCard(); });
+    root.addEventListener("appinstalled", () => {
+      state.installEvent = null;
+      el("inst-done").hidden = false;
+      if (!el("install-view").hidden) showInstall();
+    });
+    el("inst-button").onclick = promptInstall;
   }
 
   async function start() {
@@ -2509,6 +2552,11 @@
     wire();
     applyTexts();
     registerSW();
+    // Im Browser nur die Anleitung, das Programm gibt es erst als installierte App
+    if (!isStandalone()) {
+      showInstall();
+      return;
+    }
     try {
       state.hasVault = !!(await DB.get("vault"));
       state.bio = await DB.get("bio");

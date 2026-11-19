@@ -35,7 +35,6 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
         <img src="<?php echo $asset('logo.png'); ?>" alt="" width="76" height="76" class="lock-logo">
         <h1 id="lock-title"></h1>
         <p id="lock-lead" class="muted"></p>
-        <p id="lock-ios" class="warn-box" hidden></p>
         <input type="text" name="username" autocomplete="username" value="OTP-PWA" hidden>
         <label class="field">
           <span data-i18n="lock.password"></span>
@@ -61,7 +60,30 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
           <button type="button" class="link danger-text" id="lock-reset" data-i18n="lock.reset"></button>
         </div>
       </form>
-      <div id="lock-install" class="install-card" hidden></div>
+    </div>
+  </section>
+
+  <!-- Im Browser gibt es nur die Anleitung zum Installieren. Das Programm selbst läuft nur als installierte App. -->
+  <section id="install-view" class="lock-view" hidden>
+    <div class="lock-lang lang" role="group" data-i18n-label="lang.label">
+      <button type="button" data-lang="de">DE</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+    <div class="lock-wrap">
+      <div class="lock-card install">
+        <img src="<?php echo $asset('logo.png'); ?>" alt="" width="76" height="76" class="lock-logo">
+        <h1>OTP-PWA</h1>
+        <p class="muted" data-i18n="inst.lead"></p>
+        <h2 id="inst-title"></h2>
+        <ol id="inst-steps" class="steps"></ol>
+        <button type="button" class="primary big wide" id="inst-button" hidden><span data-i18n="inst.button"></span></button>
+        <p id="inst-done" class="note" data-i18n="inst.done" hidden></p>
+        <p class="hint" id="inst-hint"></p>
+      </div>
+      <div class="install-card">
+        <b data-i18n="inst.whyTitle"></b>
+        <span data-i18n="inst.why"></span>
+      </div>
     </div>
   </section>
 
@@ -361,7 +383,6 @@ $asset = function (string $f): string { return '?action=asset&amp;f=' . $f . '&a
           <p class="muted small" id="set-server"></p>
           <div class="row wrap">
             <button type="button" class="ghost" id="set-update" data-i18n="settings.checkUpdate"></button>
-            <a class="ghost btnlink" id="set-admin" href="./?action=admin" data-i18n="settings.admin"></a>
           </div>
           <p class="muted small" data-i18n="settings.aboutText"></p>
         </section>

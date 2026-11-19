@@ -133,7 +133,15 @@ input[type=range] { width: 100%; accent-color: var(--acc); min-height: 2rem; }
   font-size: .9rem; box-shadow: var(--shadow);
 }
 .install-card b { display: block; margin-bottom: .2rem; }
-.install-card .row { margin-top: .6rem; }
+.lock-card.install h2 { font-size: 1.1rem; margin: 1.1rem 0 .6rem; }
+.steps { text-align: left; margin: 0 0 1rem; padding: 0; list-style: none; counter-reset: st; }
+.steps li { counter-increment: st; display: flex; gap: .75rem; align-items: flex-start; padding: .55rem 0; border-top: 1px solid var(--line); }
+.steps li:first-child { border-top: 0; }
+.steps li::before {
+  content: counter(st); flex: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--acc); color: var(--acc-text); font-weight: 750; font-size: .9rem;
+}
+.steps .ico { display: inline-grid; place-items: center; vertical-align: -.3rem; width: 1.6rem; height: 1.6rem; border: 1px solid var(--line); border-radius: 7px; margin: 0 .15rem; color: var(--acc); }
 
 /* Kopfleiste */
 .main-view { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
